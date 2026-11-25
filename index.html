@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV - Romy Triadi Sulistyo | IT Operations & Data Analyst</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <table class="print-wrapper">
+      <thead>
+        <tr><td><div class="print-spacer"></div></td></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <!-- Header Profile -->
+            <header class="profile-header">
+              <!-- Sliding Switcher Atas-Bawah di Pojok Kanan Atas Header -->
+              <div class="header-controls no-print">
+                <button id="lang-toggle" class="pill-switch" aria-label="Switch Language">
+                  <span class="pill-option" data-val="id">ID</span>
+                  <span class="pill-option" data-val="en">EN</span>
+                  <span class="pill-slider" id="lang-slider"></span>
+                </button>
+
+                <button id="theme-toggle" class="pill-switch" aria-label="Switch Theme">
+                  <span class="pill-option" data-val="light">☀️</span>
+                  <span class="pill-option" data-val="dark">🌙</span>
+                  <span class="pill-slider" id="theme-slider"></span>
+                </button>
+              </div>
+
+              <div class="avatar-wrapper">
+                <img src="assets/profil-romy-3x4.png" alt="Romy Triadi Sulistyo" class="avatar-photo" />
+              </div>
+              <div class="header-info">
+                <h1 id="full-name">Romy Triadi Sulistyo</h1>
+                <h2 id="job-title" class="subtitle"></h2>
+                <div class="basic-meta" id="basic-meta"></div>
+                <div class="social-links-3rows" id="social-links"></div>
+              </div>
+            </header>
+
+            <!-- Professional Summary & Download PDF -->
+            <section class="card summary-section">
+              <div class="section-header-flex">
+                <h3 id="label-summary"></h3>
+                <button id="btn-download-pdf" class="btn-primary no-print">
+                  <span>⬇</span> <span id="label-download"></span>
+                </button>
+              </div>
+              <p id="summary-text" class="summary-text"></p>
+            </section>
+
+            <!-- Tech Stack Logos -->
+            <section class="card tech-logos-section no-print">
+              <h3 id="label-tech-logos"></h3>
+              <div class="tech-logos-grid" id="tech-logos-grid"></div>
+            </section>
+
+            <!-- Analytics Charts -->
+            <section class="charts-grid no-print">
+              <div class="card chart-card">
+                <h3 id="label-radar-chart"></h3>
+                <div class="canvas-wrapper">
+                  <canvas id="radarChart"></canvas>
+                </div>
+                <a href="#section-skills" class="btn-mobile-jump">
+                  <span id="label-jump-skills"></span> ↓
+                </a>
+              </div>
+
+              <div class="card chart-card">
+                <h3 id="label-bar-chart"></h3>
+                <div class="canvas-wrapper">
+                  <canvas id="barChart"></canvas>
+                </div>
+                <a href="#section-experience" class="btn-mobile-jump">
+                  <span id="label-jump-exp"></span> ↓
+                </a>
+              </div>
+            </section>
+
+            <!-- Main 2-Column Content -->
+            <main class="main-grid">
+              <aside class="sidebar-col">
+                <section class="card" id="section-skills">
+                  <h3 id="label-core-skills"></h3>
+                  <div class="accordion-list" id="skills-accordion"></div>
+                </section>
+
+                <section class="card" id="section-education">
+                  <h3 id="label-education"></h3>
+                  <div class="edu-list" id="education-list"></div>
+                </section>
+
+                <section class="card" id="section-languages">
+                  <h3 id="label-languages"></h3>
+                  <div class="lang-list" id="languages-list"></div>
+                </section>
+
+                <section class="card" id="section-certifications">
+                  <h3 id="label-certifications"></h3>
+                  <div class="cert-list" id="certifications-list"></div>
+                </section>
+              </aside>
+
+              <div class="content-col">
+                <section class="card" id="section-experience">
+                  <h3 id="label-experience"></h3>
+                  <div class="timeline-list" id="experience-list"></div>
+                </section>
+
+                <section class="card" id="section-achievements">
+                  <h3 id="label-achievements"></h3>
+                  <div class="timeline-list" id="achievements-list"></div>
+                </section>
+              </div>
+            </main>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr><td><div class="print-spacer"></div></td></tr>
+      </tfoot>
+    </table>
+
+    <!-- Footer Web -->
+    <footer class="footer no-print">
+      <p id="footer-text"></p>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="controller.js"></script>
+</body>
+</html>
