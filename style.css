@@ -354,13 +354,26 @@ body {
 /* Mobile Responsive */
 @media (max-width: 860px) {
   body { padding: 0.85rem; }
-  .profile-header { flex-direction: column; text-align: center; padding: 1.35rem; }
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.35rem;
+  }
   .header-controls {
     position: static;
     flex-direction: row;
     justify-content: flex-end;
     width: 100%;
     margin-bottom: 0.25rem;
+  }
+  .avatar-wrapper {
+    justify-content: center;
+    width: 100%;
+  }
+  .avatar-photo {
+    width: 120px;
+    height: 160px;
   }
   .social-links-3rows { align-items: center; }
   .tech-logos-grid { justify-content: flex-start; }
@@ -383,6 +396,7 @@ body {
   .content-col { order: 1; width: 100%; }
   .sidebar-col { order: 2; width: 100%; }
 }
+
 
 /* Print / Download PDF (Semua Ukuran Font Minimal 9.5pt) */
 @media print {
