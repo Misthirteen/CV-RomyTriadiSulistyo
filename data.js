@@ -7,10 +7,11 @@ const cvData = {
     locationUrl: "https://www.google.com" + "/maps/search/?api=1&query=-6.385500,106.875000",
     email: "romy.triadi@gmail.com",
     phone: "+62 857 7785 4899",
-    socials: [
-      { icon: "🔗", label: "linkedin" + ".com/in/misthirteen", url: "https://www.linkedin" + ".com/in/misthirteen" },
+     socials: [
+      { icon: "🔗", label: "linkedin" + ".com/in/misthirteen", url: "https://www.linkedin" + ".com/in/misthirteen/" },
       { icon: "🎨", label: "behance" + ".net/misthirteen", url: "https://www.behance" + ".net/misthirteen" },
-      { icon: "💻", label: "github" + ".com/Misthirteen", url: "https://github" + ".com/Misthirteen" }
+      { icon: "💻", label: "github" + ".com/Misthirteen", url: "https://github" + ".com/Misthirteen" },
+      { icon: "🌐", label: "misthirteen.github" + ".io/CV-RomyTriadiSulistyo", url: "https://misthirteen.github" + ".io/CV-RomyTriadiSulistyo/" }
     ],
     techLogos: [
       { name: "Windows & Server", icon: baseIcon + "windows-10.png" },
