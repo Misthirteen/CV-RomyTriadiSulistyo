@@ -45,7 +45,6 @@ function updateLangUI() {
   document.documentElement.setAttribute('lang', currentLang);
 }
 
-// Smooth Text Cross-Fade tanpa kedip & tetap memicu animasi ikon teknologi
 function switchLanguageSmooth(newLang) {
   if (isLangSwitching || currentLang === newLang) return;
   isLangSwitching = true;
@@ -56,13 +55,11 @@ function switchLanguageSmooth(newLang) {
 
   const targets = document.querySelectorAll(LANG_TEXT_SELECTORS);
 
-  // Tahap 1: Fade out teks lama secara lembut
   targets.forEach(el => {
     el.classList.add('lang-text-target', 'text-fading-out');
   });
 
   setTimeout(() => {
-    // Tahap 2: Render teks baru & ulangi animasi ikon teknologi
     renderContent(true);
 
     const newTargets = document.querySelectorAll(LANG_TEXT_SELECTORS);
@@ -70,10 +67,8 @@ function switchLanguageSmooth(newLang) {
       el.classList.add('lang-text-target', 'text-fading-in');
     });
 
-    // Paksa browser membaca posisi awal (reflow) sebelum transisi fade-in dimulai
     void document.body.offsetHeight;
 
-    // Tahap 3: Fade in teks baru dengan mulus
     requestAnimationFrame(() => {
       newTargets.forEach(el => {
         el.classList.remove('text-fading-in', 'text-fading-out');
@@ -90,11 +85,11 @@ function renderContent(isSwitch = false) {
   const data = cvData[currentLang];
   const common = cvData.common;
 
-  const openIndices = [];
+  const openIndices = new Array();
   document.querySelectorAll('#skills-accordion .accordion-item').forEach((item, idx) => {
     if (item.classList.contains('active')) openIndices.push(idx);
   });
-  const activeAccordions = openIndices.length > 0 ? openIndices :;
+  const activeAccordions = openIndices.length > 0 ? openIndices : new Array(0);
 
   document.getElementById('full-name').textContent = common.name;
   document.getElementById('job-title').textContent = data.roleTitle;
@@ -216,7 +211,6 @@ function initScrollAnimations(isSwitch = false) {
   if (techObserver) techObserver.disconnect();
   if (avatarObserver) avatarObserver.disconnect();
 
-  // 1. Foto Profil: Replay fade-in saat dibuka & saat scroll kembali ke atas
   const avatarPhoto = document.querySelector('.avatar-photo');
   if (avatarPhoto) {
     avatarObserver = new IntersectionObserver((entries) => {
@@ -231,7 +225,6 @@ function initScrollAnimations(isSwitch = false) {
     avatarObserver.observe(avatarPhoto);
   }
 
-  // 2. Icon aplikasi pumping 1 by 1 (Tetap beranimasi ulang seperti refresh halaman)
   const techGrid = document.getElementById('tech-logos-grid');
   if (techGrid) {
     techObserver = new IntersectionObserver((entries) => {
@@ -253,7 +246,6 @@ function initScrollAnimations(isSwitch = false) {
     techObserver.observe(techGrid);
   }
 
-  // 3. Chart bergerak dari 0 setiap kali masuk area container
   const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
   if (chartsContainer) {
     if (isSwitch && radarChartInstance && barChartInstance) {
@@ -280,7 +272,6 @@ function initScrollAnimations(isSwitch = false) {
     chartObserver.observe(chartsContainer);
   }
 
-  // 4. Animasi scroll untuk item di luar layar (tidak menabrak transisi teks saat switch bahasa)
   const textTargets = document.querySelectorAll(
     '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
@@ -303,7 +294,6 @@ function initScrollAnimations(isSwitch = false) {
     const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
 
     if (isSwitch && isInViewport) {
-      // Biarkan transisi cross-fade bahasa yang bekerja tanpa ditimpa reveal-on-scroll
       el.classList.add('reveal-on-scroll', 'is-visible');
     } else {
       el.classList.add('reveal-on-scroll');
@@ -318,7 +308,7 @@ function updateChartLabelsSmooth() {
 
   if (radarChartInstance) {
     radarChartInstance.data.labels = data.charts.radarLabels;
-    radarChartInstance.data.datasets[0].label = unitLabel;
+    radarChartInstance.data.datasets.at(0).label = unitLabel;
     radarChartInstance.update('active');
   }
   if (barChartInstance) {
