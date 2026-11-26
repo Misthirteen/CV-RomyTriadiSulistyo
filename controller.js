@@ -4,13 +4,23 @@ let radarChartInstance = null;
 let barChartInstance = null;
 let isLangSwitching = false;
 
-// Menyimpan instance IntersectionObserver agar bersih saat ganti bahasa
 let scrollObserver = null;
 let chartObserver = null;
 let techObserver = null;
 let avatarObserver = null;
 
 document.documentElement.setAttribute('data-theme', currentTheme);
+
+const LANG_TEXT_SELECTORS = [
+  '#job-title',
+  '#label-summary', '#label-download', '#summary-text',
+  '#label-tech-logos', '#label-radar-chart', '#label-bar-chart',
+  '#label-jump-skills', '#label-jump-exp', '#label-core-skills',
+  '#skills-accordion', '#label-education', '#education-list',
+  '#label-languages', '#languages-list', '#label-certifications',
+  '#certifications-list', '#label-experience', '#experience-list',
+  '#label-achievements', '#achievements-list', '#footer-text'
+].join(',');
 
 function updateThemeUI() {
   const slider = document.getElementById('theme-slider');
@@ -35,7 +45,7 @@ function updateLangUI() {
   document.documentElement.setAttribute('lang', currentLang);
 }
 
-// Fungsi Smooth Language Switch (Fade-out -> Render -> Fade-in tanpa kedip/lompat)
+// Smooth Text Cross-Fade tanpa kedip & tetap memicu animasi ikon teknologi
 function switchLanguageSmooth(newLang) {
   if (isLangSwitching || currentLang === newLang) return;
   isLangSwitching = true;
@@ -44,31 +54,42 @@ function switchLanguageSmooth(newLang) {
   localStorage.setItem('cv_lang', currentLang);
   updateLangUI();
 
-  const container = document.querySelector('.container') || document.body;
-  
-  // Kunci tinggi kontainer sementara agar scroll bar tidak meloncat saat konten diperbarui
-  const currentHeight = container.offsetHeight;
-  container.style.minHeight = `${currentHeight}px`;
-  container.classList.add('lang-transitioning');
+  const targets = document.querySelectorAll(LANG_TEXT_SELECTORS);
+
+  // Tahap 1: Fade out teks lama secara lembut
+  targets.forEach(el => {
+    el.classList.add('lang-text-target', 'text-fading-out');
+  });
 
   setTimeout(() => {
+    // Tahap 2: Render teks baru & ulangi animasi ikon teknologi
     renderContent(true);
 
-    requestAnimationFrame(() => {
-      container.classList.remove('lang-transitioning');
-      setTimeout(() => {
-        container.style.minHeight = '';
-        isLangSwitching = false;
-      }, 280);
+    const newTargets = document.querySelectorAll(LANG_TEXT_SELECTORS);
+    newTargets.forEach(el => {
+      el.classList.add('lang-text-target', 'text-fading-in');
     });
-  }, 200);
+
+    // Paksa browser membaca posisi awal (reflow) sebelum transisi fade-in dimulai
+    void document.body.offsetHeight;
+
+    // Tahap 3: Fade in teks baru dengan mulus
+    requestAnimationFrame(() => {
+      newTargets.forEach(el => {
+        el.classList.remove('text-fading-in', 'text-fading-out');
+      });
+
+      setTimeout(() => {
+        isLangSwitching = false;
+      }, 260);
+    });
+  }, 230);
 }
 
 function renderContent(isSwitch = false) {
   const data = cvData[currentLang];
   const common = cvData.common;
 
-  // Simpan indeks accordion yang sedang terbuka agar tidak tertutup paksa saat ganti bahasa
   const openIndices = [];
   document.querySelectorAll('#skills-accordion .accordion-item').forEach((item, idx) => {
     if (item.classList.contains('active')) openIndices.push(idx);
@@ -94,15 +115,11 @@ function renderContent(isSwitch = false) {
   document.getElementById('summary-text').textContent = data.summary;
 
   document.getElementById('label-tech-logos').textContent = data.labels.techLogos;
-  // Ikon aplikasi hanya di-render ulang saat load awal agar tidak berkedip saat switch bahasa
-  const techGrid = document.getElementById('tech-logos-grid');
-  if (!isSwitch || !techGrid.children.length) {
-    techGrid.innerHTML = common.techLogos.map(logo => `
-      <div class="tech-logo-item" data-tooltip="${logo.name}">
-        <img src="${logo.icon}" alt="${logo.name}" loading="lazy" />
-      </div>
-    `).join('');
-  }
+  document.getElementById('tech-logos-grid').innerHTML = common.techLogos.map(logo => `
+    <div class="tech-logo-item" data-tooltip="${logo.name}">
+      <img src="${logo.icon}" alt="${logo.name}" loading="lazy" />
+    </div>
+  `).join('');
 
   document.getElementById('label-radar-chart').textContent = data.labels.radarChart;
   document.getElementById('label-bar-chart').textContent = data.labels.barChart;
@@ -187,6 +204,10 @@ function renderContent(isSwitch = false) {
 
   document.getElementById('footer-text').textContent = data.footer;
 
+  document.querySelectorAll(LANG_TEXT_SELECTORS).forEach(el => {
+    el.classList.add('lang-text-target');
+  });
+
   initScrollAnimations(isSwitch);
 }
 function initScrollAnimations(isSwitch = false) {
@@ -210,7 +231,7 @@ function initScrollAnimations(isSwitch = false) {
     avatarObserver.observe(avatarPhoto);
   }
 
-  // 2. Icon aplikasi pumping 1 by 1 (Replay saat scroll down maupun scroll up)
+  // 2. Icon aplikasi pumping 1 by 1 (Tetap beranimasi ulang seperti refresh halaman)
   const techGrid = document.getElementById('tech-logos-grid');
   if (techGrid) {
     techObserver = new IntersectionObserver((entries) => {
@@ -232,7 +253,7 @@ function initScrollAnimations(isSwitch = false) {
     techObserver.observe(techGrid);
   }
 
-  // 3. Chart bergerak dari 0 saat masuk layar; jika sedang switch bahasa, update label secara halus
+  // 3. Chart bergerak dari 0 setiap kali masuk area container
   const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
   if (chartsContainer) {
     if (isSwitch && radarChartInstance && barChartInstance) {
@@ -259,7 +280,7 @@ function initScrollAnimations(isSwitch = false) {
     chartObserver.observe(chartsContainer);
   }
 
-  // 4. Semua teks dan detail muncul dengan animasi saat scroll down & scroll up
+  // 4. Animasi scroll untuk item di luar layar (tidak menabrak transisi teks saat switch bahasa)
   const textTargets = document.querySelectorAll(
     '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
@@ -278,19 +299,19 @@ function initScrollAnimations(isSwitch = false) {
   });
 
   textTargets.forEach(el => {
-    el.classList.add('reveal-on-scroll');
-    // Jika sedang ganti bahasa dan elemen sudah berada di area layar, langsung tampilkan tanpa kedip ulang
-    if (isSwitch) {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight && rect.bottom > 0) {
-        el.classList.add('is-visible');
-      }
+    const rect = el.getBoundingClientRect();
+    const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
+
+    if (isSwitch && isInViewport) {
+      // Biarkan transisi cross-fade bahasa yang bekerja tanpa ditimpa reveal-on-scroll
+      el.classList.add('reveal-on-scroll', 'is-visible');
+    } else {
+      el.classList.add('reveal-on-scroll');
     }
     scrollObserver.observe(el);
   });
 }
 
-// Memperbarui label chart saat switch bahasa tanpa menghancurkan kanvas (zero flicker)
 function updateChartLabelsSmooth() {
   const data = cvData[currentLang];
   const unitLabel = currentLang === 'id' ? 'Kompetensi' : 'Competencies';
