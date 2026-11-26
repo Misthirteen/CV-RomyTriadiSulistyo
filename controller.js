@@ -2,6 +2,7 @@ let currentLang = localStorage.getItem('cv_lang') || 'id';
 let currentTheme = localStorage.getItem('cv_theme') || 'dark';
 let radarChartInstance = null;
 let barChartInstance = null;
+let isLangSwitching = false;
 
 // Menyimpan instance IntersectionObserver agar bersih saat ganti bahasa
 let scrollObserver = null;
@@ -34,9 +35,45 @@ function updateLangUI() {
   document.documentElement.setAttribute('lang', currentLang);
 }
 
-function renderContent() {
+// Fungsi Smooth Language Switch (Fade-out -> Render -> Fade-in tanpa kedip/lompat)
+function switchLanguageSmooth(newLang) {
+  if (isLangSwitching || currentLang === newLang) return;
+  isLangSwitching = true;
+
+  currentLang = newLang;
+  localStorage.setItem('cv_lang', currentLang);
+  updateLangUI();
+
+  const container = document.querySelector('.container') || document.body;
+  
+  // Kunci tinggi kontainer sementara agar scroll bar tidak meloncat saat konten diperbarui
+  const currentHeight = container.offsetHeight;
+  container.style.minHeight = `${currentHeight}px`;
+  container.classList.add('lang-transitioning');
+
+  setTimeout(() => {
+    renderContent(true);
+
+    requestAnimationFrame(() => {
+      container.classList.remove('lang-transitioning');
+      setTimeout(() => {
+        container.style.minHeight = '';
+        isLangSwitching = false;
+      }, 280);
+    });
+  }, 200);
+}
+
+function renderContent(isSwitch = false) {
   const data = cvData[currentLang];
   const common = cvData.common;
+
+  // Simpan indeks accordion yang sedang terbuka agar tidak tertutup paksa saat ganti bahasa
+  const openIndices = [];
+  document.querySelectorAll('#skills-accordion .accordion-item').forEach((item, idx) => {
+    if (item.classList.contains('active')) openIndices.push(idx);
+  });
+  const activeAccordions = openIndices.length > 0 ? openIndices :;
 
   document.getElementById('full-name').textContent = common.name;
   document.getElementById('job-title').textContent = data.roleTitle;
@@ -57,11 +94,15 @@ function renderContent() {
   document.getElementById('summary-text').textContent = data.summary;
 
   document.getElementById('label-tech-logos').textContent = data.labels.techLogos;
-  document.getElementById('tech-logos-grid').innerHTML = common.techLogos.map(logo => `
-    <div class="tech-logo-item" data-tooltip="${logo.name}">
-      <img src="${logo.icon}" alt="${logo.name}" loading="lazy" />
-    </div>
-  `).join('');
+  // Ikon aplikasi hanya di-render ulang saat load awal agar tidak berkedip saat switch bahasa
+  const techGrid = document.getElementById('tech-logos-grid');
+  if (!isSwitch || !techGrid.children.length) {
+    techGrid.innerHTML = common.techLogos.map(logo => `
+      <div class="tech-logo-item" data-tooltip="${logo.name}">
+        <img src="${logo.icon}" alt="${logo.name}" loading="lazy" />
+      </div>
+    `).join('');
+  }
 
   document.getElementById('label-radar-chart').textContent = data.labels.radarChart;
   document.getElementById('label-bar-chart').textContent = data.labels.barChart;
@@ -71,7 +112,7 @@ function renderContent() {
   document.getElementById('label-core-skills').textContent = data.labels.coreSkills;
   const countUnit = currentLang === 'id' ? 'Kompetensi' : 'Skills';
   document.getElementById('skills-accordion').innerHTML = data.coreSkills.map((group, idx) => `
-    <div class="accordion-item ${idx === 0 ? 'active' : ''}">
+    <div class="accordion-item ${activeAccordions.includes(idx) ? 'active' : ''}">
       <button class="accordion-header" type="button">
         <span class="accordion-title">${group.category}</span>
         <span class="accordion-right">
@@ -146,9 +187,9 @@ function renderContent() {
 
   document.getElementById('footer-text').textContent = data.footer;
 
-  initScrollAnimations();
+  initScrollAnimations(isSwitch);
 }
-function initScrollAnimations() {
+function initScrollAnimations(isSwitch = false) {
   if (scrollObserver) scrollObserver.disconnect();
   if (chartObserver) chartObserver.disconnect();
   if (techObserver) techObserver.disconnect();
@@ -191,13 +232,18 @@ function initScrollAnimations() {
     techObserver.observe(techGrid);
   }
 
-  // 3. Chart bergerak dari 0 setiap kali masuk area container (Scroll Down & Scroll Up)
+  // 3. Chart bergerak dari 0 saat masuk layar; jika sedang switch bahasa, update label secara halus
   const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
   if (chartsContainer) {
+    if (isSwitch && radarChartInstance && barChartInstance) {
+      updateChartLabelsSmooth();
+    }
     chartObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          renderCharts();
+          if (!radarChartInstance || !barChartInstance) {
+            renderCharts();
+          }
         } else {
           if (radarChartInstance) {
             radarChartInstance.destroy();
@@ -233,8 +279,31 @@ function initScrollAnimations() {
 
   textTargets.forEach(el => {
     el.classList.add('reveal-on-scroll');
+    // Jika sedang ganti bahasa dan elemen sudah berada di area layar, langsung tampilkan tanpa kedip ulang
+    if (isSwitch) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight && rect.bottom > 0) {
+        el.classList.add('is-visible');
+      }
+    }
     scrollObserver.observe(el);
   });
+}
+
+// Memperbarui label chart saat switch bahasa tanpa menghancurkan kanvas (zero flicker)
+function updateChartLabelsSmooth() {
+  const data = cvData[currentLang];
+  const unitLabel = currentLang === 'id' ? 'Kompetensi' : 'Competencies';
+
+  if (radarChartInstance) {
+    radarChartInstance.data.labels = data.charts.radarLabels;
+    radarChartInstance.data.datasets[0].label = unitLabel;
+    radarChartInstance.update('active');
+  }
+  if (barChartInstance) {
+    barChartInstance.data.labels = data.charts.barLabels;
+    barChartInstance.update('active');
+  }
 }
 
 function renderCharts() {
@@ -370,10 +439,8 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
 });
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
-  currentLang = currentLang === 'id' ? 'en' : 'id';
-  localStorage.setItem('cv_lang', currentLang);
-  updateLangUI();
-  renderContent();
+  const nextLang = currentLang === 'id' ? 'en' : 'id';
+  switchLanguageSmooth(nextLang);
 });
 
 document.getElementById('btn-download-pdf').addEventListener('click', () => {
@@ -382,4 +449,4 @@ document.getElementById('btn-download-pdf').addEventListener('click', () => {
 
 updateThemeUI();
 updateLangUI();
-renderContent();
+renderContent(false);
