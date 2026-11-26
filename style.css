@@ -401,17 +401,18 @@ body {
 .footer { text-align: center; font-size: 0.86rem; color: var(--text-muted); padding: 1rem 0 0.5rem; }
 
 /* Animasi Teks & Elemen Saat Scroll Down maupun Scroll Up */
+/* Animasi Teks & Header (Initial Load, Scroll Down, & Scroll Up) */
 .reveal-on-scroll {
   opacity: 0;
-  transform: translateY(22px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(18px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
   will-change: opacity, transform;
 }
 
 .reveal-on-scroll.is-visible {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1), transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
 }
 /* Transisi Halus Khusus Teks Saat Switch Bahasa (ID <-> EN) */
 .lang-text-target {
