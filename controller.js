@@ -85,11 +85,14 @@ function renderContent(isSwitch = false) {
   const data = cvData[currentLang];
   const common = cvData.common;
 
-  const openIndices = new Array();
+  // Simpan status accordion yang terbuka dengan Set (100% aman dari error sintaks)
+  const activeAccordions = new Set();
   document.querySelectorAll('#skills-accordion .accordion-item').forEach((item, idx) => {
-    if (item.classList.contains('active')) openIndices.push(idx);
+    if (item.classList.contains('active')) activeAccordions.add(idx);
   });
-  const activeAccordions = openIndices.length > 0 ? openIndices : new Array(0);
+  if (activeAccordions.size === 0 && !isSwitch) {
+    activeAccordions.add(0);
+  }
 
   document.getElementById('full-name').textContent = common.name;
   document.getElementById('job-title').textContent = data.roleTitle;
@@ -124,7 +127,7 @@ function renderContent(isSwitch = false) {
   document.getElementById('label-core-skills').textContent = data.labels.coreSkills;
   const countUnit = currentLang === 'id' ? 'Kompetensi' : 'Skills';
   document.getElementById('skills-accordion').innerHTML = data.coreSkills.map((group, idx) => `
-    <div class="accordion-item ${activeAccordions.includes(idx) ? 'active' : ''}">
+    <div class="accordion-item ${activeAccordions.has(idx) ? 'active' : ''}">
       <button class="accordion-header" type="button">
         <span class="accordion-title">${group.category}</span>
         <span class="accordion-right">
@@ -308,7 +311,9 @@ function updateChartLabelsSmooth() {
 
   if (radarChartInstance) {
     radarChartInstance.data.labels = data.charts.radarLabels;
-    radarChartInstance.data.datasets.at(0).label = unitLabel;
+    radarChartInstance.data.datasets.forEach(ds => {
+      ds.label = unitLabel;
+    });
     radarChartInstance.update('active');
   }
   if (barChartInstance) {
