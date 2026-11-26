@@ -214,6 +214,7 @@ function initScrollAnimations(isSwitch = false) {
   if (techObserver) techObserver.disconnect();
   if (avatarObserver) avatarObserver.disconnect();
 
+  // 1. Foto Profil: Replay fade-in saat dibuka & saat scroll kembali ke atas
   const avatarPhoto = document.querySelector('.avatar-photo');
   if (avatarPhoto) {
     avatarObserver = new IntersectionObserver((entries) => {
@@ -228,6 +229,7 @@ function initScrollAnimations(isSwitch = false) {
     avatarObserver.observe(avatarPhoto);
   }
 
+  // 2. Icon aplikasi pumping 1 by 1 (Replay saat scroll down maupun scroll up)
   const techGrid = document.getElementById('tech-logos-grid');
   if (techGrid) {
     techObserver = new IntersectionObserver((entries) => {
@@ -249,32 +251,46 @@ function initScrollAnimations(isSwitch = false) {
     techObserver.observe(techGrid);
   }
 
-  const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
-  if (chartsContainer) {
-    if (isSwitch && radarChartInstance && barChartInstance) {
-      updateChartLabelsSmooth();
-    }
-    chartObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          if (!radarChartInstance || !barChartInstance) {
-            renderCharts();
-          }
-        } else {
-          if (radarChartInstance) {
-            radarChartInstance.destroy();
-            radarChartInstance = null;
-          }
-          if (barChartInstance) {
-            barChartInstance.destroy();
-            barChartInstance = null;
-          }
-        }
-      });
-    }, { threshold: 0.15 });
-    chartObserver.observe(chartsContainer);
+  // 3. Chart bergerak dari 0 secara individual saat masing-masing card masuk 25% ke layar
+  if (isSwitch) {
+    updateChartLabelsSmooth();
   }
 
+  const radarCanvas = document.getElementById('radarChart');
+  const barCanvas = document.getElementById('barChart');
+  const radarCard = radarCanvas ? (radarCanvas.closest('.chart-card') || radarCanvas) : null;
+  const barCard = barCanvas ? (barCanvas.closest('.chart-card') || barCanvas) : null;
+
+  chartObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const target = entry.target;
+
+      // Penanganan khusus untuk kartu Radar Chart
+      if (radarCard && target === radarCard) {
+        if (entry.isIntersecting) {
+          if (!radarChartInstance) renderRadarChart();
+        } else if (radarChartInstance) {
+          radarChartInstance.destroy();
+          radarChartInstance = null;
+        }
+      }
+
+      // Penanganan khusus untuk kartu Bar Chart
+      if (barCard && target === barCard) {
+        if (entry.isIntersecting) {
+          if (!barChartInstance) renderBarChart();
+        } else if (barChartInstance) {
+          barChartInstance.destroy();
+          barChartInstance = null;
+        }
+      }
+    });
+  }, { threshold: 0.25 }); // Trigger tepat saat 25% area masing-masing card terlihat di layar
+
+  if (radarCard) chartObserver.observe(radarCard);
+  if (barCard) chartObserver.observe(barCard);
+
+  // 4. Animasi scroll untuk seluruh teks dan detail
   const textTargets = document.querySelectorAll(
     '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
@@ -322,24 +338,31 @@ function updateChartLabelsSmooth() {
   }
 }
 
-function renderCharts() {
-  if (typeof Chart === 'undefined') return;
-  const data = cvData[currentLang];
+function getChartThemeConfig() {
   const isDark = currentTheme === 'dark';
-  const textColor = isDark ? '#cbd5e1' : '#334155';
-  const gridColor = isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(71, 85, 105, 0.15)';
-  const accentColor = isDark ? '#38bdf8' : '#0284c7';
+  return {
+    isDark,
+    textColor: isDark ? '#cbd5e1' : '#334155',
+    gridColor: isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(71, 85, 105, 0.15)',
+    accentColor: isDark ? '#38bdf8' : '#0284c7'
+  };
+}
+
+function renderRadarChart() {
+  const radarEl = document.getElementById('radarChart');
+  if (typeof Chart === 'undefined' || !radarEl) return;
+
+  const data = cvData[currentLang];
+  const { isDark, textColor, gridColor, accentColor } = getChartThemeConfig();
 
   if (radarChartInstance) radarChartInstance.destroy();
-  if (barChartInstance) barChartInstance.destroy();
 
   const dynamicRadarScores = data.coreSkills.map(group => group.items.length);
   const highestScore = Math.max(...dynamicRadarScores, 5);
   const maxRadarScale = Math.ceil(highestScore / 5) * 5;
   const unitLabel = currentLang === 'id' ? 'Kompetensi' : 'Competencies';
 
-  const radarCtx = document.getElementById('radarChart').getContext('2d');
-  radarChartInstance = new Chart(radarCtx, {
+  radarChartInstance = new Chart(radarEl.getContext('2d'), {
     type: 'radar',
     data: {
       labels: data.charts.radarLabels,
@@ -384,9 +407,18 @@ function renderCharts() {
       }
     }
   });
+}
 
-  const barCtx = document.getElementById('barChart').getContext('2d');
-  barChartInstance = new Chart(barCtx, {
+function renderBarChart() {
+  const barEl = document.getElementById('barChart');
+  if (typeof Chart === 'undefined' || !barEl) return;
+
+  const data = cvData[currentLang];
+  const { textColor, gridColor, accentColor } = getChartThemeConfig();
+
+  if (barChartInstance) barChartInstance.destroy();
+
+  barChartInstance = new Chart(barEl.getContext('2d'), {
     type: 'bar',
     data: {
       labels: data.charts.barLabels,
@@ -449,9 +481,8 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
   document.documentElement.setAttribute('data-theme', currentTheme);
   localStorage.setItem('cv_theme', currentTheme);
   updateThemeUI();
-  if (radarChartInstance || barChartInstance) {
-    renderCharts();
-  }
+  if (radarChartInstance) renderRadarChart();
+  if (barChartInstance) renderBarChart();
 });
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
@@ -462,6 +493,10 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 document.getElementById('btn-download-pdf').addEventListener('click', () => {
   window.print();
 });
+
+updateThemeUI();
+updateLangUI();
+renderContent(false);
 
 updateThemeUI();
 updateLangUI();
