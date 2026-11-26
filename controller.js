@@ -214,13 +214,15 @@ function initScrollAnimations(isSwitch = false) {
   if (techObserver) techObserver.disconnect();
   if (avatarObserver) avatarObserver.disconnect();
 
-  // 1. Foto Profil: Replay fade-in saat dibuka & saat scroll kembali ke atas
+  // 1. Foto Profil: Smooth fade-in saat halaman dibuka & replay saat scroll up
   const avatarPhoto = document.querySelector('.avatar-photo');
   if (avatarPhoto) {
     avatarObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
+          requestAnimationFrame(() => {
+            entry.target.classList.add('is-visible');
+          });
         } else {
           entry.target.classList.remove('is-visible');
         }
@@ -247,26 +249,26 @@ function initScrollAnimations(isSwitch = false) {
           });
         }
       });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.15 });
     techObserver.observe(techGrid);
   }
 
-  // 3. Chart bergerak dari 0 secara individual saat masing-masing card masuk 25% ke layar
+  // 3. Chart bergerak dari 0 TEPAT saat memasuki 25% area kanvas masing-masing chart
   if (isSwitch) {
     updateChartLabelsSmooth();
   }
 
   const radarCanvas = document.getElementById('radarChart');
   const barCanvas = document.getElementById('barChart');
-  const radarCard = radarCanvas ? (radarCanvas.closest('.chart-card') || radarCanvas) : null;
-  const barCard = barCanvas ? (barCanvas.closest('.chart-card') || barCanvas) : null;
+  // Mengamati .canvas-wrapper (area chart langsung, bukan seluruh card)
+  const radarArea = radarCanvas ? (radarCanvas.parentElement || radarCanvas) : null;
+  const barArea = barCanvas ? (barCanvas.parentElement || barCanvas) : null;
 
   chartObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       const target = entry.target;
 
-      // Penanganan khusus untuk kartu Radar Chart
-      if (radarCard && target === radarCard) {
+      if (radarArea && target === radarArea) {
         if (entry.isIntersecting) {
           if (!radarChartInstance) renderRadarChart();
         } else if (radarChartInstance) {
@@ -275,8 +277,7 @@ function initScrollAnimations(isSwitch = false) {
         }
       }
 
-      // Penanganan khusus untuk kartu Bar Chart
-      if (barCard && target === barCard) {
+      if (barArea && target === barArea) {
         if (entry.isIntersecting) {
           if (!barChartInstance) renderBarChart();
         } else if (barChartInstance) {
@@ -285,40 +286,57 @@ function initScrollAnimations(isSwitch = false) {
         }
       }
     });
-  }, { threshold: 0.25 }); // Trigger tepat saat 25% area masing-masing card terlihat di layar
+  }, { threshold: 0.25 });
 
-  if (radarCard) chartObserver.observe(radarCard);
-  if (barCard) chartObserver.observe(barCard);
+  if (radarArea) chartObserver.observe(radarArea);
+  if (barArea) chartObserver.observe(barArea);
 
-  // 4. Animasi scroll untuk seluruh teks dan detail
+  // 4. Seluruh teks termasuk Nama, Jabatan, Lokasi, Link Sosial, Summary, hingga bawah
   const textTargets = document.querySelectorAll(
-    '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
+    '#full-name, #job-title, #basic-meta, .social-row-item, .summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
 
-  scrollObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-visible');
-      } else {
-        entry.target.classList.remove('is-visible');
-      }
-    });
-  }, {
-    threshold: 0.08,
-    rootMargin: '0px 0px -15px 0px'
-  });
-
-  textTargets.forEach(el => {
+  // Pastikan seluruh elemen mulai dalam keadaan siap transisi (opacity: 0) saat load awal
+  textTargets.forEach((el, idx) => {
     const rect = el.getBoundingClientRect();
     const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
 
     if (isSwitch && isInViewport) {
       el.classList.add('reveal-on-scroll', 'is-visible');
     } else {
+      el.classList.remove('is-visible');
       el.classList.add('reveal-on-scroll');
+      // Beri jeda berurutan halus khusus elemen yang sudah tampil di layar awal
+      if (!isSwitch && isInViewport) {
+        el.style.transitionDelay = `${Math.min(idx * 45, 450)}ms`;
+      }
     }
-    scrollObserver.observe(el);
   });
+
+  // Paksa browser mengunci posisi awal sebelum observer memicu fade-in pertama kali
+  void document.body.offsetHeight;
+
+  scrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        requestAnimationFrame(() => {
+          entry.target.classList.add('is-visible');
+          // Hapus transitionDelay setelah animasi awal selesai agar scroll up/down responsif
+          setTimeout(() => {
+            entry.target.style.transitionDelay = '0ms';
+          }, 800);
+        });
+      } else {
+        entry.target.style.transitionDelay = '0ms';
+        entry.target.classList.remove('is-visible');
+      }
+    });
+  }, {
+    threshold: 0.08,
+    rootMargin: '0px 0px -10px 0px'
+  });
+
+  textTargets.forEach(el => scrollObserver.observe(el));
 }
 
 function updateChartLabelsSmooth() {
@@ -493,10 +511,6 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 document.getElementById('btn-download-pdf').addEventListener('click', () => {
   window.print();
 });
-
-updateThemeUI();
-updateLangUI();
-renderContent(false);
 
 updateThemeUI();
 updateLangUI();
