@@ -3,10 +3,11 @@ let currentTheme = localStorage.getItem('cv_theme') || 'dark';
 let radarChartInstance = null;
 let barChartInstance = null;
 
-// Menyimpan instance IntersectionObserver agar tidak menumpuk saat ganti bahasa
+// Menyimpan instance IntersectionObserver agar bersih saat ganti bahasa
 let scrollObserver = null;
 let chartObserver = null;
 let techObserver = null;
+let avatarObserver = null;
 
 document.documentElement.setAttribute('data-theme', currentTheme);
 
@@ -151,63 +152,83 @@ function initScrollAnimations() {
   if (scrollObserver) scrollObserver.disconnect();
   if (chartObserver) chartObserver.disconnect();
   if (techObserver) techObserver.disconnect();
+  if (avatarObserver) avatarObserver.disconnect();
 
-  if (radarChartInstance) {
-    radarChartInstance.destroy();
-    radarChartInstance = null;
-  }
-  if (barChartInstance) {
-    barChartInstance.destroy();
-    barChartInstance = null;
-  }
-
-  // 1. Icon aplikasi pumping 1 by 1 hingga akhir
-  const techGrid = document.getElementById('tech-logos-grid');
-  if (techGrid) {
-    techObserver = new IntersectionObserver((entries, observer) => {
+  // 1. Foto Profil: Replay fade-in saat dibuka & saat scroll kembali ke atas
+  const avatarPhoto = document.querySelector('.avatar-photo');
+  if (avatarPhoto) {
+    avatarObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          const items = entry.target.querySelectorAll('.tech-logo-item');
+          entry.target.classList.add('is-visible');
+        } else {
+          entry.target.classList.remove('is-visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    avatarObserver.observe(avatarPhoto);
+  }
+
+  // 2. Icon aplikasi pumping 1 by 1 (Replay saat scroll down maupun scroll up)
+  const techGrid = document.getElementById('tech-logos-grid');
+  if (techGrid) {
+    techObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const items = entry.target.querySelectorAll('.tech-logo-item');
+        if (entry.isIntersecting) {
           items.forEach((item, index) => {
             item.style.animationDelay = `${index * 65}ms`;
             item.classList.add('animate-pump');
           });
-          observer.unobserve(entry.target);
+        } else {
+          items.forEach(item => {
+            item.classList.remove('animate-pump');
+            item.style.animationDelay = '0ms';
+          });
         }
       });
-    }, { threshold: 0.15 });
+    }, { threshold: 0.1 });
     techObserver.observe(techGrid);
   }
 
-  // 2. Chart bergerak dari 0 sesuai nilai ketika masuk area container
+  // 3. Chart bergerak dari 0 setiap kali masuk area container (Scroll Down & Scroll Up)
   const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
   if (chartsContainer) {
-    chartObserver = new IntersectionObserver((entries, observer) => {
+    chartObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           renderCharts();
-          observer.unobserve(entry.target);
+        } else {
+          if (radarChartInstance) {
+            radarChartInstance.destroy();
+            radarChartInstance = null;
+          }
+          if (barChartInstance) {
+            barChartInstance.destroy();
+            barChartInstance = null;
+          }
         }
       });
-    }, { threshold: 0.25 });
+    }, { threshold: 0.15 });
     chartObserver.observe(chartsContainer);
   }
 
-  // 3. Semua teks dan item detail muncul dengan animasi saat scroll down
+  // 4. Semua teks dan detail muncul dengan animasi saat scroll down & scroll up
   const textTargets = document.querySelectorAll(
     '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
 
-  scrollObserver = new IntersectionObserver((entries, observer) => {
+  scrollObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('is-visible');
-        observer.unobserve(entry.target);
+      } else {
+        entry.target.classList.remove('is-visible');
       }
     });
   }, {
-    threshold: 0.1,
-    rootMargin: '0px 0px -30px 0px'
+    threshold: 0.08,
+    rootMargin: '0px 0px -15px 0px'
   });
 
   textTargets.forEach(el => {
