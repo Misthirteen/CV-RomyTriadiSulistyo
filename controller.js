@@ -11,9 +11,10 @@ let avatarObserver = null;
 
 document.documentElement.setAttribute('data-theme', currentTheme);
 
+// Semua elemen teks termasuk Nama, Jabatan, Lokasi, Link Sosial, dan Tombol ikut bertransisi
 const LANG_TEXT_SELECTORS = [
-  '#job-title',
-  '#label-summary', '#label-download', '#summary-text',
+  '#full-name', '#job-title', '#basic-meta', '.social-row-item',
+  '#label-summary', '#btn-download-pdf', '#summary-text',
   '#label-tech-logos', '#label-radar-chart', '#label-bar-chart',
   '#label-jump-skills', '#label-jump-exp', '#label-core-skills',
   '#skills-accordion', '#label-education', '#education-list',
@@ -45,6 +46,7 @@ function updateLangUI() {
   document.documentElement.setAttribute('lang', currentLang);
 }
 
+// Transisi Smooth Cross-Fade untuk Header + Semua Teks saat Switch Bahasa
 function switchLanguageSmooth(newLang) {
   if (isLangSwitching || currentLang === newLang) return;
   isLangSwitching = true;
@@ -55,11 +57,13 @@ function switchLanguageSmooth(newLang) {
 
   const targets = document.querySelectorAll(LANG_TEXT_SELECTORS);
 
+  // 1. Fade out lembut seluruh teks & header (220ms)
   targets.forEach(el => {
     el.classList.add('lang-text-target', 'text-fading-out');
   });
 
   setTimeout(() => {
+    // 2. Render ulang konten bahasa baru
     renderContent(true);
 
     const newTargets = document.querySelectorAll(LANG_TEXT_SELECTORS);
@@ -69,23 +73,27 @@ function switchLanguageSmooth(newLang) {
 
     void document.body.offsetHeight;
 
+    // 3. Fade in beruntun secara halus dari header ke bawah
     requestAnimationFrame(() => {
-      newTargets.forEach(el => {
+      newTargets.forEach((el, idx) => {
+        el.style.transitionDelay = `${Math.min(idx * 25, 220)}ms`;
         el.classList.remove('text-fading-in', 'text-fading-out');
       });
 
       setTimeout(() => {
+        newTargets.forEach(el => {
+          el.style.transitionDelay = '0ms';
+        });
         isLangSwitching = false;
-      }, 260);
+      }, 480);
     });
-  }, 230);
+  }, 220);
 }
 
 function renderContent(isSwitch = false) {
   const data = cvData[currentLang];
   const common = cvData.common;
 
-  // Simpan status accordion yang terbuka dengan Set (100% aman dari error sintaks)
   const activeAccordions = new Set();
   document.querySelectorAll('#skills-accordion .accordion-item').forEach((item, idx) => {
     if (item.classList.contains('active')) activeAccordions.add(idx);
@@ -214,15 +222,16 @@ function initScrollAnimations(isSwitch = false) {
   if (techObserver) techObserver.disconnect();
   if (avatarObserver) avatarObserver.disconnect();
 
-  // 1. Foto Profil: Smooth fade-in saat halaman dibuka & replay saat scroll up
+  // 1. Foto Profil: Tahan 80ms saat buka web agar transisi fade-in terlihat jelas
   const avatarPhoto = document.querySelector('.avatar-photo');
   if (avatarPhoto) {
+    if (!isSwitch) avatarPhoto.classList.remove('is-visible');
     avatarObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          requestAnimationFrame(() => {
+          setTimeout(() => {
             entry.target.classList.add('is-visible');
-          });
+          }, isSwitch ? 0 : 80);
         } else {
           entry.target.classList.remove('is-visible');
         }
@@ -231,7 +240,7 @@ function initScrollAnimations(isSwitch = false) {
     avatarObserver.observe(avatarPhoto);
   }
 
-  // 2. Icon aplikasi pumping 1 by 1 (Replay saat scroll down maupun scroll up)
+  // 2. Icon aplikasi pumping 1 by 1
   const techGrid = document.getElementById('tech-logos-grid');
   if (techGrid) {
     techObserver = new IntersectionObserver((entries) => {
@@ -253,14 +262,13 @@ function initScrollAnimations(isSwitch = false) {
     techObserver.observe(techGrid);
   }
 
-  // 3. Chart bergerak dari 0 TEPAT saat memasuki 25% area kanvas masing-masing chart
+  // 3. Chart (Berjalan per kanvas saat masuk 25% area layar)
   if (isSwitch) {
     updateChartLabelsSmooth();
   }
 
   const radarCanvas = document.getElementById('radarChart');
   const barCanvas = document.getElementById('barChart');
-  // Mengamati .canvas-wrapper (area chart langsung, bukan seluruh card)
   const radarArea = radarCanvas ? (radarCanvas.parentElement || radarCanvas) : null;
   const barArea = barCanvas ? (barCanvas.parentElement || barCanvas) : null;
 
@@ -296,8 +304,7 @@ function initScrollAnimations(isSwitch = false) {
     '#full-name, #job-title, #basic-meta, .social-row-item, .summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
   );
 
-  // Pastikan seluruh elemen mulai dalam keadaan siap transisi (opacity: 0) saat load awal
-  textTargets.forEach((el, idx) => {
+  textTargets.forEach(el => {
     const rect = el.getBoundingClientRect();
     const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
 
@@ -306,37 +313,43 @@ function initScrollAnimations(isSwitch = false) {
     } else {
       el.classList.remove('is-visible');
       el.classList.add('reveal-on-scroll');
-      // Beri jeda berurutan halus khusus elemen yang sudah tampil di layar awal
-      if (!isSwitch && isInViewport) {
-        el.style.transitionDelay = `${Math.min(idx * 45, 450)}ms`;
-      }
     }
   });
 
-  // Paksa browser mengunci posisi awal sebelum observer memicu fade-in pertama kali
-  void document.body.offsetHeight;
+  // Jeda 100ms saat pertama kali halaman dibuka agar animasi masuk bagian atas terlihat jelas
+  setTimeout(() => {
+    let initialDelayCounter = 0;
 
-  scrollObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        requestAnimationFrame(() => {
-          entry.target.classList.add('is-visible');
-          // Hapus transitionDelay setelah animasi awal selesai agar scroll up/down responsif
-          setTimeout(() => {
+    scrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const rect = entry.target.getBoundingClientRect();
+          const isTopIntro = !isSwitch && rect.top < window.innerHeight && window.scrollY < 50;
+
+          if (isTopIntro) {
+            const delay = Math.min(initialDelayCounter * 55, 550);
+            initialDelayCounter++;
+            entry.target.style.transitionDelay = `${delay}ms`;
+            entry.target.classList.add('is-visible');
+            setTimeout(() => {
+              entry.target.style.transitionDelay = '0ms';
+            }, delay + 750);
+          } else {
             entry.target.style.transitionDelay = '0ms';
-          }, 800);
-        });
-      } else {
-        entry.target.style.transitionDelay = '0ms';
-        entry.target.classList.remove('is-visible');
-      }
+            entry.target.classList.add('is-visible');
+          }
+        } else {
+          entry.target.style.transitionDelay = '0ms';
+          entry.target.classList.remove('is-visible');
+        }
+      });
+    }, {
+      threshold: 0.08,
+      rootMargin: '0px 0px -10px 0px'
     });
-  }, {
-    threshold: 0.08,
-    rootMargin: '0px 0px -10px 0px'
-  });
 
-  textTargets.forEach(el => scrollObserver.observe(el));
+    textTargets.forEach(el => scrollObserver.observe(el));
+  }, isSwitch ? 0 : 100);
 }
 
 function updateChartLabelsSmooth() {
@@ -355,7 +368,6 @@ function updateChartLabelsSmooth() {
     barChartInstance.update('active');
   }
 }
-
 function getChartThemeConfig() {
   const isDark = currentTheme === 'dark';
   return {
