@@ -3,6 +3,11 @@ let currentTheme = localStorage.getItem('cv_theme') || 'dark';
 let radarChartInstance = null;
 let barChartInstance = null;
 
+// Menyimpan instance IntersectionObserver agar tidak menumpuk saat ganti bahasa
+let scrollObserver = null;
+let chartObserver = null;
+let techObserver = null;
+
 document.documentElement.setAttribute('data-theme', currentTheme);
 
 function updateThemeUI() {
@@ -74,8 +79,10 @@ function renderContent() {
         </span>
       </button>
       <div class="accordion-body">
-        <div class="skill-tags">
-          ${group.items.map(item => `<span class="skill-tag">${item}</span>`).join('')}
+        <div class="accordion-inner">
+          <div class="skill-tags">
+            ${group.items.map(item => `<span class="skill-tag">${item}</span>`).join('')}
+          </div>
         </div>
       </div>
     </div>
@@ -138,7 +145,75 @@ function renderContent() {
 
   document.getElementById('footer-text').textContent = data.footer;
 
-  renderCharts();
+  initScrollAnimations();
+}
+function initScrollAnimations() {
+  if (scrollObserver) scrollObserver.disconnect();
+  if (chartObserver) chartObserver.disconnect();
+  if (techObserver) techObserver.disconnect();
+
+  if (radarChartInstance) {
+    radarChartInstance.destroy();
+    radarChartInstance = null;
+  }
+  if (barChartInstance) {
+    barChartInstance.destroy();
+    barChartInstance = null;
+  }
+
+  // 1. Icon aplikasi pumping 1 by 1 hingga akhir
+  const techGrid = document.getElementById('tech-logos-grid');
+  if (techGrid) {
+    techObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const items = entry.target.querySelectorAll('.tech-logo-item');
+          items.forEach((item, index) => {
+            item.style.animationDelay = `${index * 65}ms`;
+            item.classList.add('animate-pump');
+          });
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    techObserver.observe(techGrid);
+  }
+
+  // 2. Chart bergerak dari 0 sesuai nilai ketika masuk area container
+  const chartsContainer = document.querySelector('.charts-grid') || document.getElementById('radarChart');
+  if (chartsContainer) {
+    chartObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          renderCharts();
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.25 });
+    chartObserver.observe(chartsContainer);
+  }
+
+  // 3. Semua teks dan item detail muncul dengan animasi saat scroll down
+  const textTargets = document.querySelectorAll(
+    '.summary-text, .card h3, .timeline-item, .timeline-bullets li, .edu-item, .lang-item, .cert-item, .accordion-item, .tech-summary-item'
+  );
+
+  scrollObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -30px 0px'
+  });
+
+  textTargets.forEach(el => {
+    el.classList.add('reveal-on-scroll');
+    scrollObserver.observe(el);
+  });
 }
 
 function renderCharts() {
@@ -174,6 +249,10 @@ function renderCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 1300,
+        easing: 'easeOutQuart'
+      },
       scales: {
         r: {
           min: 0,
@@ -200,7 +279,7 @@ function renderCharts() {
     }
   });
 
-    const barCtx = document.getElementById('barChart').getContext('2d');
+  const barCtx = document.getElementById('barChart').getContext('2d');
   barChartInstance = new Chart(barCtx, {
     type: 'bar',
     data: {
@@ -215,8 +294,16 @@ function renderCharts() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutQuart',
+        delay: (context) => {
+          return context.type === 'data' && context.mode === 'default' ? context.dataIndex * 120 : 0;
+        }
+      },
       scales: {
         x: {
+          beginAtZero: true,
           grid: { color: gridColor },
           ticks: { color: textColor }
         },
@@ -249,7 +336,6 @@ function renderCharts() {
       }
     }
   });
-
 }
 
 document.getElementById('theme-toggle').addEventListener('click', () => {
@@ -257,7 +343,9 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
   document.documentElement.setAttribute('data-theme', currentTheme);
   localStorage.setItem('cv_theme', currentTheme);
   updateThemeUI();
-  renderCharts();
+  if (radarChartInstance || barChartInstance) {
+    renderCharts();
+  }
 });
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
